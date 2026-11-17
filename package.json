@@ -1,0 +1,11 @@
+{
+  "name": "nearly-web",
+  "private": true,
+  "version": "0.3.0",
+  "description": "Nearly shared couples web app",
+  "scripts": {
+    "check": "node scripts/check.mjs",
+    "test": "node --test tests/sync.test.cjs && node tests/game-sessions.mjs"
+  },
+  "devDependencies": {"@electric-sql/pglite": "0.3.14"}
+}

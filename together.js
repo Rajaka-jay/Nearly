@@ -36,8 +36,9 @@ start = async function(id) {
   if (!spaceRecord) return toast('Sign in and join your space first.');
   activeRoom=id;
   try {
-    if(saving || pending) { await flush(); if(saving || pending) throw Error('Wait for your changes to finish saving.'); }
+    if(saving || pending) { await flush(); if(saving || pending || failedDraft) throw Error('Wait for your changes to finish saving.'); }
     const s=await rpc('get');
+    if(!s)throw Error('Your space is no longer available.');
     acceptSpace(s);
     if(!state.rooms?.[id]) await roomChange(()=>newRoom(id));
     renderRoom();
@@ -106,4 +107,5 @@ function editActivity(){const id=activeRoom,r=state.rooms[id];activeRoom=null;fo
 function setupSharedCanvas(r){const c=$('#shared-canvas'),ctx=c.getContext('2d');ctx.fillStyle='#faf7fc';ctx.fillRect(0,0,600,400);if(r.image){let img=new Image();img.onload=()=>ctx.drawImage(img,0,0);img.src=r.image}ctx.strokeStyle='#8972b4';ctx.lineWidth=5;ctx.lineCap='round';let painting=false;const point=e=>{let b=c.getBoundingClientRect();return[(e.clientX-b.left)*600/b.width,(e.clientY-b.top)*400/b.height]};c.onpointerdown=e=>{if(r.turn!==mySeat()||roomBusy)return;painting=true;c.setPointerCapture(e.pointerId);ctx.beginPath();ctx.moveTo(...point(e))};c.onpointermove=e=>{if(painting){ctx.lineTo(...point(e));ctx.stroke()}};c.onpointerup=c.onpointercancel=()=>{if(!painting)return;painting=false;const image=c.toDataURL();roomChange(latest=>{if(latest.turn!==mySeat())throw Error('The pen has changed hands.');latest.image=image;return latest})}}
 function sharedClock(){const el=$('#shared-clock'),r=state.rooms?.[activeRoom];if(!el||!r)return;let seconds=r.id==='focus'?Math.max(0,Math.ceil((r.end-Date.now())/1000)):Math.floor((Date.now()-r.started)/1000);el.textContent=r.id==='focus'?(r.end?Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0'):'Ready when you are'):!r.started?'Ready for movie night':seconds<0?'Press play in '+(-seconds)+'s':'Playing together · '+Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0')}
 setInterval(sharedClock,1000);
-setInterval(async()=>{if(!activeRoom||!dialog.open||roomBusy||saving||pending)return;const focused=document.activeElement;if(focused?.matches('input,textarea,select'))return;try{const s=await rpc('get');if(!s)return;const room=s.data.rooms?.[activeRoom];if(JSON.stringify(room)!==roomSnapshot){acceptSpace(s);renderRoom()}}catch{cloudStatus('Reconnecting…')}},3000);
+setInterval(async()=>{if(!activeRoom||!dialog.open||roomBusy||saving||pending||failedDraft||authoritativeSession)return;const focused=document.activeElement;if(focused?.matches('input,textarea,select'))return;try{const s=await rpc('get');if(!s)return;const room=s.data.rooms?.[activeRoom];if(JSON.stringify(room)!==roomSnapshot){acceptSpace(s);renderRoom()}}catch{cloudStatus('Reconnecting…')}},3000);
+
