@@ -13,7 +13,7 @@
 
 JavaScript syntax checks passed. Five sync regression tests passed. The SQL setup and additive migration were applied to a local embedded PostgreSQL engine with a test auth schema. Checks passed for win detection, out-of-turn rejection, stale-version rejection, duplicate action replay, finished-game rejection, third-account rejection, matching cards, hidden-card response masking, and direct-table access denial.
 
-The local preview could not be opened because the browser environment rejected its address. Browser-based visual, mobile, and real Supabase two-account verification remains pending. Password recovery and confirmation delivery need validation in the actual project.
+The local preview was blocked by the browser environment. After publication, the deployed desktop home and sign-in dialog were opened and visually inspected successfully. Mobile and real Supabase two-account verification remain pending. Password recovery and confirmation delivery need validation in the actual project.
 
 ## Required Supabase action
 
