@@ -11,3 +11,6 @@
 .tracker>.illustrated-tree{position:relative;left:auto;top:auto;bottom:auto;transform:none;width:85px;height:100px;scale:1;overflow:visible}
 .tracker .illustrated-tree-ground{filter:blur(3px)}
 @media(max-width:600px){.garden>.illustrated-tree{top:auto;bottom:190px;height:340px;width:95%;scale:1}.tree-plaque{z-index:3}.garden{min-height:570px}.tracker>.illustrated-tree{height:95px;width:80px}}
+
+html[data-embedded] .top-nav,html[data-embedded] .mobile-nav,html[data-embedded] footer{display:none}
+html[data-embedded] main{padding-top:18px;padding-bottom:30px}

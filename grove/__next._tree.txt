@@ -1,4 +1,4 @@
-:HL["/Nearly/grove/_next/static/chunks/20ajjksf7v7_g.css","style"]
+:HL["/Nearly/grove/_next/static/chunks/2bjjfsr4c5bc6.css","style"]
 :HL["https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap","style"]
 1:[["children",{"s":"__PAGE__","h":160}]]
-0:{"b":"R3SdH7rvSwk3Os2PE8J3w","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
+0:{"b":"kZ6Ivgvlzr_VvDNCkK_-O","t":{"t":{"s":"","h":80,"c":"$Q1"}}}

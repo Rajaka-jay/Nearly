@@ -1,0 +1,31 @@
+import {PGlite} from '@electric-sql/pglite';
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const db=new PGlite();
+await db.exec(`create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key); create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('app.user',true),'')::uuid $$;`);
+await db.exec(await fs.readFile(new URL('../supabase/setup.sql',import.meta.url),'utf8'));
+await db.exec(await fs.readFile(new URL('../supabase/video_calls.sql',import.meta.url),'utf8'));
+const A=crypto.randomUUID(),B=crypto.randomUUID(),C=crypto.randomUUID(),D=crypto.randomUUID(),dA=crypto.randomUUID(),dB=crypto.randomUUID();
+await db.query('insert into auth.users(id) values($1),($2),($3),($4)',[A,B,C,D]);
+await db.query('insert into public.nearly_spaces(owner_id,partner_id) values($1,$2),($3,$4)',[A,B,C,D]);
+async function user(id){await db.query("select set_config('app.user',$1,false)",[id]);}
+async function call(action,payload={}){return (await db.query('select public.nearly_call($1,$2::jsonb) as r',[action,JSON.stringify(payload)])).rows[0].r;}
+await user(A);assert((await call('get')).paired);
+await assert.rejects(call('start',{device:dA,description:{type:'answer',sdp:'test-answer'}}),/Invalid call offer/);
+let c=await call('start',{device:dA,description:{type:'offer',sdp:'test-offer-sdp'}});const id=c.id;assert.equal(c.caller_id,A);assert.equal(c.callee_id,B);
+await assert.rejects(call('start',{device:dA,description:{type:'offer',sdp:'test-offer-sdp'}}),/already in progress/);
+await user(C);assert.equal((await call('get')).call,null);await assert.rejects(call('end',{id,device:dA}),/no longer available/);
+await db.exec('set role authenticated');assert.equal((await db.query('select * from public.nearly_calls')).rows.length,0);await db.exec('reset role');
+await user(B);c=await call('answer',{id,device:dB,description:{type:'answer',sdp:'test-answer-sdp'}});assert.equal(c.status,'connecting');
+await assert.rejects(call('answer',{id,device:crypto.randomUUID(),description:{type:'answer',sdp:'test-answer-sdp'}}),/already been answered/);
+await user(A);await assert.rejects(call('ice',{id,device:crypto.randomUUID(),candidate:{candidate:'candidate:test'}}),/another device/);
+c=await call('ice',{id,device:dA,candidate:{candidate:'candidate:test'}});assert.equal(c.caller_candidates.length,1);c=await call('ice',{id,device:dA,candidate:{candidate:'candidate:test'}});assert.equal(c.caller_candidates.length,1);
+await db.exec('set role authenticated');assert.equal((await db.query('select * from public.nearly_calls')).rows.length,1);await assert.rejects(db.query("update public.nearly_calls set status='ended'"),/permission denied/);await db.exec('reset role');
+c=await call('active',{id,device:dA});assert.equal(c.status,'active');await user(B);c=await call('end',{id,device:dB,reason:'hangup'});assert.equal(c.offer,null);assert.equal(c.answer,null);assert.deepEqual(c.caller_candidates,[]);
+await user(A);await assert.rejects(call('ice',{id,device:dA,candidate:{candidate:'candidate:test'}}),/already ended/);
+await db.query("update public.nearly_calls set status='ringing',offer=$1,expires_at=now()-interval '1 second' where id=$2",[JSON.stringify({type:'offer',sdp:'test-offer-sdp'}),id]);
+c=(await call('get')).call;assert.equal(c.end_reason,'timeout');assert.equal(c.offer,null);
+await db.query('update public.nearly_spaces set partner_id=$1 where owner_id=$2',[D,A]);await user(B);assert.equal((await call('get')).paired,false);
+await db.exec('set role authenticated');assert.equal((await db.query('select * from public.nearly_calls')).rows.length,0);await db.exec('reset role');await user(A);assert.equal((await call('get')).call,null);
+await user('');await assert.rejects(call('get'),/Sign in/);
+console.log('Call membership, RLS, device ownership, concurrent answers, duplicate ICE, timeout, unpairing and cleanup passed.');await db.close();
