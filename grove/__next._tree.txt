@@ -1,0 +1,4 @@
+:HL["/Nearly/grove/_next/static/chunks/1c5g9_v1696_k.css","style"]
+:HL["https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap","style"]
+1:[["children",{"s":"__PAGE__","h":160}]]
+0:{"b":"sK0QuctS-6Cm-UHIEHYU1","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
