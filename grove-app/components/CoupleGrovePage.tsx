@@ -17,7 +17,19 @@ const decorNames:Record<string,string>={bench:'🪑',lantern:'🏮',blanket:'�
 const memorySchema=z.object({title:z.string().trim().min(1).max(120),note:z.string().max(2000),date:z.iso.date(),decoration:z.enum(['flower','heart','lantern'])});
 import {assetConfig} from '../lib/assets';
 function stageProgress(g:Grove){const floor=thresholds[g.stage-1],next=thresholds[g.stage];return {next,percent:Math.min(100,Math.round((g.couple.growth_points-floor)/(next-floor)*100))}}
-export function RelationshipTree({growthStage,watering=false}:{growthStage:number;watering?:boolean}){const reduced=useReducedMotion();return <motion.div className={'relationship-tree stage-'+growthStage} animate={reduced?{}:{filter:watering?['brightness(1)','brightness(1.12)','brightness(1)']:'brightness(1)'}} transition={{duration:.8}} role="img" aria-label={`Stage ${growthStage}: ${stages[growthStage-1]}. A tree grown together.`}><div className="tree-aura"/><div className="tree-crown">{growthStage<3?<span className="seed-leaves">🌱</span>:Array.from({length:growthStage===3?12:25},(_,i)=><span key={i} className="blossom" style={{left:(15+(i*37)%75)+'%',top:((i*29)%80)+'%',fontSize:growthStage===3?'32px':'35px'}}>{growthStage===3?'🍃':'🌸'}</span>)}</div>{growthStage>1&&<div className="tree-trunk"><span/><span/></div>}{growthStage>3&&<><span className="tree-lantern left">🏮</span><span className="tree-lantern right">🏮</span></>}{growthStage===5&&<span className="anniversary-heart">♡</span>}<div className="tree-shadow"/></motion.div>}
+export function RelationshipTree({growthStage,watering=false}:{growthStage:number;watering?:boolean}) {
+  const reduced=useReducedMotion();
+  const stage=Math.min(5,Math.max(1,Math.floor(growthStage)));
+  const artwork=assetConfig.trees[stage-1];
+  return <div className={'relationship-tree illustrated-tree stage-'+stage} role="img" aria-label={`Stage ${stage}: ${stages[stage-1]}. ${artwork.description}`}>
+    <motion.div className="illustrated-tree-glow" animate={reduced?{}:{opacity:watering?[.3,.65,.3]:.3}} transition={{duration:1.2}}/>
+    <AnimatePresence initial={false} mode="wait">
+      <motion.img key={stage} className="illustrated-tree-image" src={artwork.src} alt="" aria-hidden="true" draggable={false}
+        initial={reduced?false:{opacity:0,y:7}} animate={{opacity:1,y:0}} exit={reduced?{}:{opacity:0}} transition={{duration:reduced?0:.65,ease:'easeOut'}}/>
+    </AnimatePresence>
+    <div className="illustrated-tree-ground" aria-hidden="true"/>
+  </div>;
+}
 export function HeartParticleLayer({burst}:{burst:number}){const reduced=useReducedMotion();return <AnimatePresence>{burst>0&&!reduced&&Array.from({length:6},(_,i)=><motion.span className="particle" key={burst+'-'+i} initial={{y:0,opacity:1,x:0}} animate={{y:-100-i*15,opacity:0,x:(i-2.5)*22}} exit={{opacity:0}} transition={{duration:1.7}} style={{left:'50%',top:'48%'}}>♥</motion.span>)}</AnimatePresence>}
 function Panel({title,icon,children}:{title:string;icon:React.ReactNode;children:React.ReactNode}){return <section className="panel"><h2>{icon}{title}</h2>{children}</section>}
 export function GrowthProgress({grove}:{grove:Grove}){const p=stageProgress(grove);return <><div className="progress-copy"><span>{stages[grove.stage-1]}</span><strong>{p.percent}%</strong></div><div className="progress" role="progressbar" aria-valuenow={p.percent} aria-valuemin={0} aria-valuemax={100} aria-label="Tree growth"><motion.div initial={false} animate={{width:p.percent+'%'}}/></div><p className="muted">{Math.max(0,p.next-grove.couple.growth_points)} growth points to your next milestone</p></>}
