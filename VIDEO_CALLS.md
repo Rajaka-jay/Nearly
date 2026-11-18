@@ -24,3 +24,18 @@ Keep permanent secrets out of GitHub and browser configuration. The function sig
 `npm run check` checks JavaScript syntax. `npm test` includes database authorization/lifecycle tests and controller tests using simulated media/peers. `cd grove-app && npm run build` checks TypeScript and produces the static export. Copy `grove-app/out/` into tracked `grove/` for branch-based Pages deployment; the Actions deployment also builds the export.
 
 Automated tests do not establish real camera or carrier connectivity. After configuring TURN, test two real paired devices on Wi-Fi/4G and 4G/4G, permission denial, simultaneous calls, network loss, tab closure, and mobile background/foreground behavior.
+
+## Managed TURN setup (added after cross-network testing)
+
+The ICE function now supports these choices, in priority order:
+
+1. **Cloudflare Realtime TURN**: set `CF_TURN_KEY_ID` and `CF_TURN_API_TOKEN` in Supabase Edge Function secrets. Create a TURN key in Cloudflare's Realtime dashboard. The function requests four-hour credentials from Cloudflare; the master API token stays server-side.
+2. **Metered TURN**: set `METERED_TURN_CREDENTIALS_URL` to the credential's HTTPS Get Credential API URL (`https://<app>.metered.live/api/v1/turn/credentials?apiKey=<credential-api-key>`). Copy it from your credential's instructions in the Metered dashboard. Keep the entire URL in Supabase secrets, since it contains the API key. Only the provider's ICE server entries reach the paired clients.
+3. **Your own coturn**: existing `TURN_URLS` + `TURN_SHARED_SECRET` support remains.
+4. **Other TURN providers**: set `TURN_URLS` (JSON array), `TURN_USERNAME`, and `TURN_PASSWORD`. These must be actual TURN credentials, not the Supabase service-role key. Prefer expiring credentials and rotate according to the provider's instructions.
+
+Optionally set `TURN_FORCE_RELAY=true` to test a configured relay without direct connections. Remove it or set `false` after the test if you want automatic route selection.
+
+No managed provider is connected by this code change. Provider signup, service activation and secret entry must be completed by the project owner. Check the provider's current usage limits and billing before activating a plan. After setting secrets, reload both devices and test on separate networks. The setup is not verified until a real relay-backed call passes.
+
+Missing relay settings are shown before a direct call is attempted. A failed ICE configuration request stops call setup instead of silently falling back to STUN. The remote audio prompt now checks the current connection and ignores delayed playback rejections from an ended call.

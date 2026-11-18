@@ -1,5 +1,6 @@
 // Optional coturn REST credentials. Set TURN_URLS (JSON array) and TURN_SHARED_SECRET
 // as Supabase function secrets. Never commit relay credentials to client code.
+import {relayConfig} from './relay-config.mjs';
 import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.89.0';
 const headers={'Access-Control-Allow-Origin':'https://rajaka-jay.github.io','Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Cache-Control':'no-store','Content-Type':'application/json'};
 const response=(data:unknown,status=200)=>new Response(JSON.stringify(data),{status,headers});
@@ -13,18 +14,11 @@ Deno.serve(async req=>{
  if(error||!user)return response({error:'Sign in to call'},401);
  const context=await client.rpc('nearly_call',{action:'get'});
  if(context.error||!context.data?.paired)return response({error:'Connect with your partner first'},403);
- const iceServers:RTCIceServer[]=[{urls:['stun:stun.cloudflare.com:3478','stun:stun.l.google.com:19302']}];
- const secret=Deno.env.get('TURN_SHARED_SECRET');
- const urls=Deno.env.get('TURN_URLS');
- if(!secret||!urls)return response({iceServers,relayConfigured:false});
  try{
-  const turnUrls=JSON.parse(urls);
-  if(!Array.isArray(turnUrls)||!turnUrls.length||turnUrls.some(u=>typeof u!=='string'||!/^turns?:/.test(u)))throw Error('Invalid relay configuration');
-  const username=`${Math.floor(Date.now()/1000)+14400}:${user.id}`;
-  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-1'},false,['sign']);
-  const signature=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(username));
-  const credential=btoa(String.fromCharCode(...new Uint8Array(signature)));
-  iceServers.push({urls:turnUrls,username,credential});
-  return response({iceServers,relayConfigured:true});
- }catch{return response({error:'The call relay needs administrator attention'},503);}
+  const config=await relayConfig({env:name=>Deno.env.get(name),userId:user.id});
+  return response(config);
+ }catch{
+  // Do not return upstream errors/URLs: those may contain provider credentials.
+  return response({error:'The call relay settings are incomplete or the provider is unavailable. Check the TURN secrets in Supabase.'},503);
+ }
 });

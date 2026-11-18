@@ -39,7 +39,7 @@
    if(a==='mic'&&this.stream){this.mic=!this.mic;this.stream.getAudioTracks().forEach(t=>t.enabled=this.mic);this.render();}
    if(a==='camera'&&this.stream){this.camera=!this.camera;this.stream.getVideoTracks().forEach(t=>t.enabled=this.camera);this.render();}
    if(a==='flip')return this.flipCamera();
-   if(a==='play'){try{await this.remote.play();this.el('.nc-play-audio').hidden=true;}catch{this.setError('Tap again to allow sound in this browser.');}}
+   if(a==='play'){const pc=this.pc;if(!pc||pc.connectionState!=='connected')return;try{this.remote.muted=false;await this.remote.play();if(this.pc===pc)this.el('.nc-play-audio').hidden=true;}catch{if(this.pc===pc)this.setError('Tap again to allow sound in this browser.');}}
    if(a==='pip')try{if(document.pictureInPictureElement)await document.exitPictureInPicture();else if(this.remote.requestPictureInPicture)await this.remote.requestPictureInPicture();}catch{this.setError('Pop-out video is not available here. Use minimize instead.');}
   }
   ownsCall(c=this.call){return c&&(c.caller_id===this.context?.user_id?c.caller_device===this.device:c.callee_device===this.device);}
@@ -68,21 +68,34 @@
    this.render();
   }
   notifyIncoming(){try{if(document.hidden&&localStorage.getItem('nearly-browser-alerts')==='yes'&&global.Notification?.permission==='granted'){const n=new Notification('Nearly',{body:'Incoming call. Open Nearly to answer.',tag:'nearly-call'});n.onclick=()=>{window.focus();n.close();};}}catch{/* Optional alerts. */}}
-  async configureIce(){const {data,error}=await this.client.functions.invoke('nearly-call-ice');if(error||!Array.isArray(data?.iceServers)){this.relayConfigured=false;this.setError('Relay settings could not be loaded. Trying a direct connection; some networks may not connect.');return;}this.iceServers=data.iceServers;this.relayConfigured=!!data.relayConfigured;}
+  async configureIce(){const {data,error}=await this.client.functions.invoke('nearly-call-ice');if(error||!Array.isArray(data?.iceServers))throw Error('Call connection settings could not be loaded. Check your sign-in and the TURN provider settings before trying again.');this.iceServers=data.iceServers;this.relayConfigured=!!data.relayConfigured;this.iceTransportPolicy=data.iceTransportPolicy==='relay'?'relay':'all';if(!this.relayConfigured)this.setError('A network relay is not connected yet. This call will try a direct connection, which may fail on mobile data or restricted Wi-Fi.');}
   async acquire(generation){
    if(!global.isSecureContext||!navigator.mediaDevices?.getUserMedia||!global.RTCPeerConnection)throw Error('Video calls need a modern browser and an HTTPS connection.');
    const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:{width:{ideal:640},height:{ideal:480},facingMode:'user'}});
    if(this.destroyed||generation!==this.generation){stream.getTracks().forEach(t=>t.stop());return false;}this.stream=stream;this.mic=true;this.camera=true;this.local.srcObject=stream;void this.local.play().catch(()=>{});return true;
   }
   makePeer(){
-   const pc=this.pc=new RTCPeerConnection({iceServers:this.iceServers}),generation=this.generation;this.seenCandidates.clear();this.remoteReady=false;this.connectedAt=0;this.lastBeat=0;this.stream.getTracks().forEach(t=>pc.addTrack(t,this.stream));
+   const pc=this.pc=new RTCPeerConnection({iceServers:this.iceServers,iceTransportPolicy:this.iceTransportPolicy||'all'}),generation=this.generation;this.seenCandidates.clear();this.remoteReady=false;this.connectedAt=0;this.lastBeat=0;this.stream.getTracks().forEach(t=>pc.addTrack(t,this.stream));
    pc.onicecandidate=e=>{if(e.candidate&&this.pc===pc){const candidate=e.candidate.toJSON();if(this.call&&this.ownsCall())this.sendCandidate(candidate);else this.pendingCandidates.push(candidate);}};
-   pc.ontrack=e=>{if(this.pc!==pc)return;this.remote.srcObject=e.streams[0]||new MediaStream([e.track]);this.remoteReady=true;this.remote.play().then(()=>{this.el('.nc-play-audio').hidden=true;}).catch(()=>{this.el('.nc-play-audio').hidden=false;});this.render();};
+   pc.ontrack=e=>{if(this.pc!==pc)return;this.remote.srcObject=e.streams[0]||new MediaStream([e.track]);this.remote.onloadeddata=()=>{if(this.pc===pc&&pc.connectionState==='connected'){this.remoteReady=true;this.render();}};if(pc.connectionState==='connected')void this.playRemote(pc);};
    pc.onconnectionstatechange=()=>{if(this.pc!==pc||generation!==this.generation)return;
-    if(pc.connectionState==='connected'){clearTimeout(this.connectTimer);clearTimeout(this.disconnectTimer);this.connectedAt=this.connectedAt||Date.now();this.status='Together, right here.';this.detail=this.relayConfigured?'Private video call':'Direct connection · a relay is needed for some mobile networks.';this.clearError();void this.action('active').catch(e=>this.setError(e.message));}
+    if(pc.connectionState==='connected'){clearTimeout(this.connectTimer);clearTimeout(this.disconnectTimer);this.connectedAt=this.connectedAt||Date.now();this.status='Together, right here.';this.detail=this.relayConfigured?'Private video call':'Direct connection · a relay is needed for some mobile networks.';this.clearError();void this.playRemote(pc);void this.action('active').catch(e=>this.setError(e.message));}
     else if(pc.connectionState==='disconnected'){this.status='Reconnecting…';clearTimeout(this.disconnectTimer);this.disconnectTimer=setTimeout(()=>{if(this.pc===pc&&pc.connectionState==='disconnected')void this.fail(Error('The connection was lost. Check your network and call again.'));},15000);}
     else if(pc.connectionState==='failed')void this.fail(Error(this.relayConfigured?'The connection failed. Check your network and try again.':'A direct connection could not be established. A TURN relay needs to be configured for these networks.'));this.render();};
    this.connectTimer=setTimeout(()=>{if(this.pc===pc&&pc.connectionState!=='connected')void this.fail(Error('The call could not connect in time. Your partner may be away, or these networks may need a TURN relay.'));},75000);return pc;
+  }
+  async playRemote(pc){
+   if(this.pc!==pc||pc.connectionState!=='connected'||!this.remote.srcObject)return;
+   try{await this.remote.play();if(this.pc!==pc)return;this.el('.nc-play-audio').hidden=this.remote.muted!==true;}
+   catch(e){
+    if(this.pc!==pc||pc.connectionState!=='connected')return;
+    if(e.name==='NotAllowedError'){
+     this.remote.muted=true;
+     try{await this.remote.play();}catch{/* Wait for an explicit user gesture. */}
+     if(this.pc===pc&&pc.connectionState==='connected')this.el('.nc-play-audio').hidden=false;
+    }
+   }
+   if(this.pc===pc&&pc.connectionState==='connected'){if(this.remote.readyState>=2)this.remoteReady=true;this.render();}
   }
   sendCandidate(candidate){const id=this.call?.id;this.iceChain=this.iceChain.then(async()=>{if(this.call?.id===id&&this.pc)await this.action('ice',{candidate});}).catch(e=>{if(this.call?.id===id)this.setError('A network update failed. '+e.message);});}
   flushCandidates(){for(const c of this.pendingCandidates)this.sendCandidate(c);this.pendingCandidates=[];}
@@ -103,7 +116,7 @@
   }
   async fail(e){if(this.call&&this.ownsCall())void this.action('end',{reason:'failed'}).catch(()=>{});this.cleanup();this.call=null;this.busy=false;this.visible=true;this.status='The call was interrupted';this.detail='You can try again when you’re ready.';this.setError(mediaError(e));this.render();}
   async end(reason='hangup'){const c=this.call;if(c)this.endedIds.add(c.id);this.cleanup();this.call=null;this.busy=false;this.status=reason==='declined'?'Call declined':'Call ended';this.detail='A little closer, even from far away.';this.render();if(c)try{await this.rpc('end',{id:c.id,device:this.device,reason});}catch(e){this.setError('Your camera and microphone are off. The other window will time out if the end update cannot be delivered. '+e.message);}}
-  cleanup(){this.generation++;clearTimeout(this.connectTimer);clearTimeout(this.disconnectTimer);this.connectedAt=0;if(this.pc){this.pc.onconnectionstatechange=null;this.pc.ontrack=null;this.pc.onicecandidate=null;this.pc.close();this.pc=null;}if(this.stream){this.stream.getTracks().forEach(t=>t.stop());this.stream=null;}this.local.srcObject=null;this.remote.srcObject=null;this.remoteReady=false;this.pendingCandidates=[];this.seenCandidates.clear();this.el('.nc-play-audio').hidden=true;}
+  cleanup(){this.generation++;clearTimeout(this.connectTimer);clearTimeout(this.disconnectTimer);this.connectedAt=0;if(this.pc){this.pc.onconnectionstatechange=null;this.pc.ontrack=null;this.pc.onicecandidate=null;this.pc.close();this.pc=null;}if(this.stream){this.stream.getTracks().forEach(t=>t.stop());this.stream=null;}this.local.srcObject=null;this.remote.onloadeddata=null;this.remote.srcObject=null;this.remote.muted=false;this.remoteReady=false;this.pendingCandidates=[];this.seenCandidates.clear();this.el('.nc-play-audio').hidden=true;}
   endKeepalive(){if(!this.call||!this.session||!this.ownsCall())return;const url=this.client.supabaseUrl,key=this.client.supabaseKey;if(url&&key)void fetch(url+'/rest/v1/rpc/nearly_call',{method:'POST',keepalive:true,headers:{'Content-Type':'application/json',apikey:key,Authorization:'Bearer '+this.session.access_token},body:JSON.stringify({action:'end',payload:{id:this.call.id,device:this.device,reason:'hangup'}})}).catch(()=>{});}
   async flipCamera(){if(!this.pc||!this.stream||this.flipping)return;this.flipping=true;const pc=this.pc,generation=this.generation;let next;try{const old=this.stream.getVideoTracks()[0],facing=old?.getSettings().facingMode==='environment'?'user':'environment';const video=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:facing},width:{ideal:640},height:{ideal:480}}});next=video.getVideoTracks()[0];if(generation!==this.generation){next.stop();return;}next.enabled=this.camera;const sender=pc.getSenders().find(s=>s.track?.kind==='video');if(!sender)throw Error('No video track is available');await sender.replaceTrack(next);if(generation!==this.generation){next.stop();return;}if(old){old.stop();this.stream.removeTrack(old);}this.stream.addTrack(next);this.local.srcObject=null;this.local.srcObject=this.stream;}catch(e){if(next)next.stop();this.setError('Could not switch cameras. '+mediaError(e));}finally{this.flipping=false;this.render();}}
   setError(message){put(this.el('.nc-error'),message);this.el('.nc-error').hidden=false;}
