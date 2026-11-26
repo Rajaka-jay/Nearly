@@ -37,7 +37,7 @@ function refineShell(){
   const couple=document.querySelector('.couple');couple.innerHTML=`<span class="space-heart">${uiIcon('heart')}</span><div>Our little world<small>${esc(state.name)} & ${esc(state.partner)}</small></div>`;
   document.querySelector('.settings').innerHTML=uiIcon('settings')+'<span>Settings & privacy</span>';
   const profile=document.querySelector('[aria-label="Profile settings"]');if(profile)profile.textContent=state.name.slice(0,1).toUpperCase();
-  if(page!=='home')document.querySelectorAll('.art').forEach((el,i)=>{const title=el.parentElement?.querySelector('h3')?.textContent;const a=catalog.find(x=>x.name===title);if(a)el.innerHTML=`<div class="activity-orbit">${uiIcon(activityIcon(a.id))}</div><span class="art-star">✧</span>`});
+  if(page!=='home')document.querySelectorAll('.activity .art').forEach((el,i)=>{const title=el.parentElement?.querySelector('h3')?.textContent;const a=catalog.find(x=>x.name===title);if(a){el.classList.add('activity-art');el.innerHTML=activityArt(a.id)}});
 }
 function activityIcon(id){return ({guess:'message',roulette:'sparkles',match:'grid',ttt:'grid',rather:'heart',truths:'message',letter:'mail',draw:'pencil',focus:'coffee',watch:'play',cook:'coffee',book:'book',questions:'message',playlist:'music',chess:'play',four:'grid',reversi:'sprout',pebbles:'sparkles'})[id]||'sparkles'}
 function uiTimeZone(zone){try{return new Intl.DateTimeFormat('en',{timeZone:zone,timeZoneName:'short'}).formatToParts(new Date()).find(x=>x.type==='timeZoneName').value+' · '+zone.replaceAll('_',' ')}catch{return zone}}
@@ -57,6 +57,6 @@ home=function(){
   refineShell();
 };
 const originalActivity=activity;
-activity=function(a){return `<button class="activity" onclick="start('${a.id}')"><div class="art ${a.color}"><div class="activity-orbit">${uiIcon(activityIcon(a.id))}</div><span class="art-star">✧</span></div><div class="activity-info"><h3>${esc(a.name)}</h3><p>${uiIcon('clock')} ${a.time} min <span>${esc(a.mode)} ${uiIcon('arrow-right')}</span></p></div></button>`};
+activity=function(a){return `<button class="activity" onclick="start('${a.id}')"><div class="art activity-art ${a.color}">${activityArt(a.id)}</div><div class="activity-info"><h3>${esc(a.name)}</h3><p>${uiIcon('clock')} ${a.time} min <span>${esc(a.mode)} ${uiIcon('arrow-right')}</span></p></div></button>`};
 // Keep the illustration and navigation usable before sign-in completes.
 navigate();
