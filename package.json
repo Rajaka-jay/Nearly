@@ -5,7 +5,7 @@
   "description": "Nearly shared couples web app",
   "scripts": {
     "check": "node scripts/check.mjs",
-    "test": "node --test tests/sync.test.cjs tests/call-controller.test.cjs tests/async-controller.test.cjs tests/media-core.test.cjs tests/media-controller.test.cjs && node tests/game-sessions.mjs && node tests/video-calls.mjs && node tests/chat.mjs && node --test tests/turn-config.test.mjs && node tests/async-games.mjs && node tests/media-room.mjs"
+    "test": "node --test tests/sync.test.cjs tests/call-controller.test.cjs tests/async-controller.test.cjs tests/media-core.test.cjs tests/media-controller.test.cjs tests/external-games.test.cjs && node tests/game-sessions.mjs && node tests/video-calls.mjs && node tests/chat.mjs && node --test tests/turn-config.test.mjs && node tests/async-games.mjs && node tests/media-room.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14"
