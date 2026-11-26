@@ -1,0 +1,25 @@
+import {PGlite}from'@electric-sql/pglite';import fs from'node:fs/promises';import assert from'node:assert/strict';
+const db=new PGlite();await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid()returns uuid language sql stable as $$select nullif(current_setting('app.user',true),'')::uuid$$;`);
+await db.exec(await fs.readFile(new URL('../supabase/setup.sql',import.meta.url),'utf8'));await db.exec(await fs.readFile(new URL('../supabase/media_room.sql',import.meta.url),'utf8'));
+const A='00000000-0000-0000-0000-000000000001',B='00000000-0000-0000-0000-000000000002',C='00000000-0000-0000-0000-000000000003';await db.query('insert into auth.users values($1),($2),($3)',[A,B,C]);await db.query('insert into nearly_spaces(owner_id,partner_id)values($1,$2)',[A,B]);
+const user=async id=>db.query("select set_config('app.user',$1,false)",[id]);
+const rpc=async(action,payload={})=>(await db.query('select nearly_media($1,$2::jsonb) result',[action,JSON.stringify(payload)])).rows[0].result;
+let r;async function action(a,p={}){r=await rpc(a,{...p,version:r.version,request_id:crypto.randomUUID()});return r;}
+await user('');await assert.rejects(rpc('get'),/Sign in/);await user(A);r=await rpc('get');assert.deepEqual(r.queue,[]);
+for(const url of ['http://example.com/x.mp4','javascript:alert(1)','https://user:pass@example.com/x','https://localhost/x.mp4','https://127.0.0.1/x.mp4','https://foo.local/x.mp3','https://example.com:90/x.mp3','https://www.youtube.com/watch?v=bad'])await assert.rejects(action('add',{url,title:'Bad URL'}));
+await assert.rejects(action('add',{url:'https://example.com/a.mp4',title:''}),/title/);
+const payload={url:'https://www.youtube.com/watch?v=M7lc1UVf-VE',title:'Our video',version:r.version,request_id:crypto.randomUUID(),kind:'spotify',user_id:C,space_id:crypto.randomUUID()};r=await rpc('add',payload);assert.equal(r.queue[0].kind,'youtube');assert.equal(r.queue[0].added_by,A);assert.equal((await rpc('add',payload)).version,r.version);
+await assert.rejects(action('add',{url:payload.url,title:'Again'}),/already/);const first=r.current_id;
+await user(B);assert.equal((await rpc('get')).id,r.id);await assert.rejects(rpc('play',{version:0,request_id:crypto.randomUUID()}),/STALE/);
+r=await action('play');assert.equal(r.paused,false);
+await db.query("update nearly_media_rooms set anchor_at=clock_timestamp()-interval '5 seconds' where id=$1",[r.id]);r=await action('pause');assert(r.position>=5&&r.position<7);assert.equal(r.paused,true);
+r=await action('seek',{position:123.5});assert.equal(r.position,123.5);await assert.rejects(action('seek',{position:-1}),/position/);await assert.rejects(action('seek',{position:'NaN'}),/position/);await assert.rejects(action('seek',{position:999999}),/position/);
+r=await action('add',{url:'https://open.spotify.com/track/0123456789012345678901',title:'Our song'});let second=r.queue[1].id;r=await action('select',{id:second});assert.equal(r.paused,true);assert.equal(r.position,0);await assert.rejects(action('play'),/Spotify/);
+r=await action('add',{url:'https://example.com/song.mp3',title:'Music'});assert.equal(r.queue[2].kind,'audio');r=await action('add',{url:'https://example.com/movie.mp4?token=abc',title:'Movie'});assert.equal(r.queue[3].kind,'video');r=await action('add',{url:'https://www.netflix.com/title/123',title:'Watch elsewhere'});assert.equal(r.queue[4].kind,'link');
+r=await action('remove',{id:second});assert.equal(r.current_id,first);assert.equal(r.paused,true);assert.equal(r.position,0);await assert.rejects(action('select',{id:second}),/no longer/);
+await db.exec('set role authenticated');await assert.rejects(db.query('select * from nearly_media_rooms'),/permission denied/);await assert.rejects(db.query('update nearly_media_rooms set position=0'),/permission denied/);await assert.rejects(db.query('select * from nearly_media_receipts'),/permission denied/);await db.exec('reset role');
+await user(C);await assert.rejects(rpc('get',{id:r.id,user_id:A}),/Connect/);await user(A);
+for(let i=r.queue.length;i<40;i++)r=await action('add',{url:`https://example.com/track${i}.mp3`,title:`Song ${i}`});await assert.rejects(action('add',{url:'https://example.com/extra.mp3',title:'Full'}),/full/);
+await db.query('update nearly_spaces set partner_id=null where owner_id=$1',[A]);await user(B);await assert.rejects(rpc('get'),/Connect/);await user(A);await assert.rejects(rpc('get'),/Connect/);await db.query('update nearly_spaces set partner_id=$1 where owner_id=$2',[C,A]);const fresh=await rpc('get');assert.notEqual(fresh.id,r.id);assert.deepEqual(fresh.queue,[]);
+await db.exec('set role anon');await assert.rejects(rpc('get'),/permission denied/);await db.exec('reset role');
+console.log('Media room passed: partner isolation, URL validation, server-derived providers/authorship, shared queue, atomic playback clock, seeking limits, duplicate receipts, stale writes, removal, queue limits, anonymous denial, and former-partner separation.');await db.close();
