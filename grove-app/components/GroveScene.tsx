@@ -4,8 +4,10 @@ import {MotionConfig,useReducedMotion} from 'framer-motion';
 import {BookOpen,Check,Droplets,Flower2,Gift,Heart,Leaf,Pause,Play,Settings2,Sparkles,Sun,Volume2,VolumeX,Maximize2,Minimize2} from 'lucide-react';
 import {assetConfig} from '../lib/assets';
 import {gardenMoment,seasonNames,type Season} from '../lib/scene';
+import GardenVisitors from './GardenVisitors';
+import GardenObjectDialog,{picnicQuestion} from './GardenObjectDialog';
 import {useGardenFullscreen} from './useGardenFullscreen';
-import type {Grove} from './CoupleGrovePage';
+import type {Grove,MemoryDraft} from './CoupleGrovePage';
 
 const phaseLabels:Record<string,string>={sunrise:'A soft new morning',day:'A little sunlight for us',golden:'Our golden hour',dusk:'When the fireflies wake',night:'Under the same stars'};
 const decorLabel:Record<string,string>={bench:'Garden bench',lantern:'Warm lantern',blanket:'Picnic blanket',swing:'Wooden swing',flowers:'Flower patch',stars:'Star lights',frame:'Memory frame'};
@@ -44,11 +46,22 @@ function useGardenAudio(){
    noise.connect(filter).connect(gain).connect(audio.destination);noise.start();breeze.start();setPlaying(true);
   }catch{stop();setError('Sound could not start in this browser. Try again with your device volume enabled.')}
  }
- return {playing,toggle,error};
+ function sound(kind:'purr'|'bird'|'chime'|'creak'){
+  const audio=context.current;if(!audio||audio.state!=='running')return;
+  const base=kind==='purr'?78:kind==='bird'?1500:kind==='creak'?190:660;
+  const osc=audio.createOscillator(),gain=audio.createGain();osc.type=kind==='creak'?'triangle':'sine';
+  const t=audio.currentTime,duration=kind==='purr'?1.1:.55;
+  osc.frequency.setValueAtTime(base,t);osc.frequency.exponentialRampToValueAtTime(kind==='bird'?2300:base*.78,t+duration*.7);
+  gain.gain.setValueAtTime(0,t);gain.gain.linearRampToValueAtTime(kind==='purr' ? .045 : .025,t+.05);gain.gain.exponentialRampToValueAtTime(.0001,t+duration);
+  osc.connect(gain).connect(audio.destination);osc.start(t);osc.stop(t+duration+.05);osc.onended=()=>{osc.disconnect();gain.disconnect()};
+ }
+ return {playing,toggle,error,sound};
 }
 
-export default function GroveScene({g,stage,burst,busy,water,open,openMemory,tree,progress}:{g:Grove;stage:number;burst:number;busy:boolean;water:()=>void;open:(s:string)=>void;openMemory:(id:string)=>void;tree:ReactNode;progress:ReactNode}){
+export default function GroveScene({g,stage,burst,busy,water,open,openMemory,tree,progress,visit}:{g:Grove;stage:number;burst:number;busy:boolean;water:()=>void;open:(s:string,draft?:MemoryDraft)=>void;openMemory:(id:string)=>void;tree:ReactNode;progress:ReactNode;visit?:(kind:string)=>Promise<boolean>}){
  const systemReduced=useReducedMotion(),[paused,setPaused]=useState(false),[now,setNow]=useState<Date|null>(null),[season,setSeason]=useState<Season>('spring'),[settings,setSettings]=useState(false);
+ const [interaction,setInteraction]=useState<{type:string;placed:boolean}|null>(null),[whisper,setWhisper]=useState(''),[quiet,setQuiet]=useState(false),[pushed,setPushed]=useState(false),[bloom,setBloom]=useState(false),[freshMemory,setFreshMemory]=useState('');
+ const reactionTimer=useRef<ReturnType<typeof setTimeout>|null>(null),momentTimer=useRef<ReturnType<typeof setTimeout>|null>(null),memoryTimer=useRef<ReturnType<typeof setTimeout>|null>(null),knownMemories=useRef<Set<string>|null>(null),seenPartnerSwing=useRef('');
  const fullscreen=useGardenFullscreen();
  const audio=useGardenAudio(),calm=!!systemReduced||paused;
  useEffect(()=>{setNow(new Date());const timer=setInterval(()=>setNow(new Date()),60000);try{setPaused(localStorage.getItem('nearly-grove-motion')==='paused');const saved=localStorage.getItem('nearly-grove-season');if(seasonNames.includes(saved as Season))setSeason(saved as Season)}catch{}return()=>clearInterval(timer)},[]);
@@ -56,23 +69,45 @@ export default function GroveScene({g,stage,burst,busy,water,open,openMemory,tre
  const memories=g.memories.slice(0,8),points=g.couple.growth_points;
  const [waterPulse,setWaterPulse]=useState(false),lastWater=useRef<string|null>(null),pulseTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
  useEffect(()=>{const water=g.events.find(e=>e.event_type==='water');if(lastWater.current!==null&&water&&lastWater.current!==water.id){setWaterPulse(true);if(pulseTimer.current)clearTimeout(pulseTimer.current);pulseTimer.current=setTimeout(()=>setWaterPulse(false),2300)}lastWater.current=water?.id||''},[g.events]);
- useEffect(()=>()=>{if(pulseTimer.current)clearTimeout(pulseTimer.current)},[]);
- return <MotionConfig reducedMotion={calm?'always':'user'}><section className={`garden living-garden phase-${moment.phase} season-${season}${calm?' scene-paused':''}${waterPulse?' just-watered':''}`} aria-label="Your shared relationship garden" style={{backgroundImage:`url(${assetConfig.background})`}}>
+ useEffect(()=>()=>{for(const timer of [pulseTimer,reactionTimer,momentTimer,memoryTimer])if(timer.current)clearTimeout(timer.current)},[]);
+ function react(text:string,sound:'purr'|'bird'|'chime'|'creak'='chime'){setWhisper(text);audio.sound(sound);if(reactionTimer.current)clearTimeout(reactionTimer.current);reactionTimer.current=setTimeout(()=>setWhisper(''),5000)}
+ useEffect(()=>{const ids=new Set(g.memories.map(m=>m.id));if(knownMemories.current){const added=g.memories.find(m=>!knownMemories.current!.has(m.id));if(added){setFreshMemory(added.id);audio.sound('chime');if(memoryTimer.current)clearTimeout(memoryTimer.current);memoryTimer.current=setTimeout(()=>setFreshMemory(''),6500)}}knownMemories.current=ids},[g.memories]);
+ useEffect(()=>{const swing=g.interactions?.find(v=>v.user_id!==g.user_id&&v.interaction_type==='swing');if(!swing||swing.id===seenPartnerSwing.current)return;seenPartnerSwing.current=swing.id;if(!calm&&Date.now()-Date.parse(swing.created_at)<3600000){setPushed(true);if(momentTimer.current)clearTimeout(momentTimer.current);momentTimer.current=setTimeout(()=>setPushed(false),8500)}},[g.interactions,calm,g.user_id]);
+ function encounter(kind:string){if(visit)void visit(kind)}
+ function objectAction(){if(!interaction)return;const kind=interaction.type;setInteraction(null);if(kind!=='stars')encounter(kind);
+  if(kind==='swing'||kind==='bench'){
+   setPushed(kind==='swing');setQuiet(kind==='bench');react(kind==='swing'?'A gentle push, a little pause.':'Let your shoulders soften. Breathe in, breathe out.',kind==='swing'?'creak':'chime');
+   if(momentTimer.current)clearTimeout(momentTimer.current);momentTimer.current=setTimeout(()=>{setPushed(false);setQuiet(false)},8500);
+  }else if(kind==='frame'){audio.sound('chime');if(g.memories[0])openMemory(g.memories[0].id);else open('memory')}
+  else if(kind==='stars')open('journal');
+  else{if(kind==='flowers'){setBloom(true);if(momentTimer.current)clearTimeout(momentTimer.current);momentTimer.current=setTimeout(()=>setBloom(false),8500)}open('memory',kind==='blanket'?{title:'Today’s picnic question',note:picnicQuestion()+'\n\n',decoration:'heart'}:kind==='lantern'?{title:'A little light for you',note:'',decoration:'lantern'}:kind==='cottage'?{title:'A note at our cottage',note:'',decoration:'heart'}:undefined)}
+ }
+ const rewarded=!!g.interactions?.some(v=>v.user_id===g.user_id&&v.reward_points>0&&v.created_at.slice(0,10)===(now||new Date()).toISOString().slice(0,10));
+
+ return <MotionConfig reducedMotion={calm?'always':'user'}><section className={`garden living-garden phase-${moment.phase} season-${season}${calm?' scene-paused':''}${waterPulse?' just-watered':''}${quiet?' quiet-moment':''}${pushed?' swing-pushed':''}${bloom?' flowers-awake':''}`} aria-label="Your shared relationship garden" style={{backgroundImage:`url(${assetConfig.background})`}}>
   <div className="scene-light" aria-hidden="true"/><div className="scene-aurora" aria-hidden="true"/><div className="scene-sunbeam" aria-hidden="true"/>
   <div className="scene-atmosphere" aria-hidden="true">{Array.from({length:18},(_,i)=><i key={i} className={moment.dark?'firefly':season==='winter'?'snowflake':season==='autumn'?'falling-leaf':'falling-petal'} style={{'--i':i,left:((i*37+7)%100)+'%',top:((i*19+3)%90)+'%',animationDelay:-(i*1.7)+'s'} as CSSProperties}/>)}{Array.from({length:16},(_,i)=><b className="scene-star" key={i} style={{left:((i*29+9)%100)+'%',top:((i*13+5)%40)+'%',animationDelay:-i+'s'}}/>)}</div>
+  <div className="window-warmth" aria-hidden="true"/><div className="lantern-warmth" aria-hidden="true"/>
+  <div className="care-blooms" aria-hidden="true">{Array.from({length:Math.min(7,Math.floor(points/75)+1)},(_,i)=><span key={i} style={{left:(12+i*12)+'%',bottom:(28+(i%3)*2)+'%'}}><Flower2/></span>)}</div>
+  {!calm&&<div className="tree-petal-rain" aria-hidden="true">{Array.from({length:quiet||waterPulse?14:5},(_,i)=><i key={i} style={{left:(36+(i*7)%31)+'%',animationDelay:-(i*1.4)+'s'}}/>)}</div>}
+  {waterPulse&&!calm&&<div className="root-sparkles" aria-hidden="true">{Array.from({length:10},(_,i)=><i key={i} style={{'--spark':i} as CSSProperties}/>)}</div>}
+  <GardenVisitors stage={stage} calm={calm} dark={moment.dark} busy={busy} encounter={encounter} react={react}/>
   <div className="scene-grass" aria-hidden="true">{Array.from({length:22},(_,i)=><i key={i} style={{left:(i*4.8)+'%',height:(20+(i%4)*9)+'px',animationDelay:-i*.3+'s'}}/>)}</div>
   <div className="scene-toolbar"><div className="scene-time"><Sun/><span>{phaseLabels[moment.phase]}<small>{now?now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'Your local time'} · {season} garden</small></span></div><div className="scene-options"><button ref={fullscreen.button} aria-label={fullscreen.expanded?'Exit full-screen garden':'View garden full screen'} title={fullscreen.expanded?'Exit full screen (Esc)':'Full-screen garden'} aria-pressed={fullscreen.expanded} onClick={()=>void fullscreen.toggle()}>{fullscreen.expanded?<Minimize2/>:<Maximize2/>}</button><button aria-label={audio.playing?'Mute garden sounds':'Enable gentle wind sounds'} aria-pressed={audio.playing} onClick={()=>void audio.toggle()}>{audio.playing?<Volume2/>:<VolumeX/>}</button><button aria-label={paused?'Resume garden motion':'Pause garden motion'} aria-pressed={paused} onClick={()=>{const value=!paused;setPaused(value);try{localStorage.setItem('nearly-grove-motion',value?'paused':'on')}catch{}}}>{paused?<Play/>:<Pause/>}</button><button aria-label="Scene appearance" aria-expanded={settings} onClick={()=>setSettings(!settings)}><Settings2/></button></div></div>
   {settings&&<div className="scene-settings"><label>Garden season<select value={season} onChange={e=>{const value=e.target.value as Season;setSeason(value);try{localStorage.setItem('nearly-grove-season',value)}catch{}}}>{seasonNames.map(s=><option key={s}>{s}</option>)}</select></label><p>The light follows your device’s clock. Seasons are a garden mood, not live weather. Sound starts only when you turn it on.{systemReduced?' Your device’s reduced-motion setting is respected.':''}</p></div>}
   {audio.error&&<p className="scene-audio-error" role="alert">{audio.error}</p>}
   <div className="scene-couple"><Heart/><span>{g.names.join(' & ')}<small>{points.toLocaleString()} little points of care · presence stays private</small></span></div>
-  <div className={'scene-tree-zone growth-'+stage}>{tree}{memories.map((m,i)=><button key={m.id} className={'memory-ornament '+(stage<3?'seed-ornament':'')} style={{left:(stage<3?24+i*7:27+(i*17)%47)+'%',top:(stage<3?75+(i%2)*4:28+(i%3)*12)+'%',animationDelay:-i*.7+'s'}} aria-label={'Open memory: '+m.title} onClick={()=>openMemory(m.id)}><span className="ornament-string"/><Heart fill="currentColor"/><span className="ornament-tooltip">{m.title}</span></button>)}</div>
+  <div className={'scene-tree-zone growth-'+stage}>{tree}{memories.map((m,i)=><button key={m.id} className={'memory-ornament '+(stage<3?'seed-ornament':'')+(freshMemory===m.id?' new-memory-bloom':'')} style={{left:(stage<3?24+i*7:27+(i*17)%47)+'%',top:(stage<3?75+(i%2)*4:28+(i%3)*12)+'%',animationDelay:-i*.7+'s'}} aria-label={'Open memory: '+m.title} onClick={()=>{audio.sound('chime');openMemory(m.id)}}><span className="ornament-string"/><Heart fill="currentColor"/><span className="ornament-tooltip">{m.title}</span></button>)}</div>
   <div className="water-ripples" aria-hidden="true"><i/><i/><i/></div>
-  {g.decorations.map(d=><button className="scene-decoration" key={d.id} style={{left:d.position_x+'%',top:d.position_y+'%'}} aria-label={'Move or remove '+(decorLabel[d.decoration_type]||d.decoration_type)} onClick={()=>open('decorate')}><GardenDecoration type={d.decoration_type}/></button>)}
-  <button className="scene-hotspot hotspot-picnic" aria-label="Open your garden gift basket" onClick={()=>open('gifts')}><Gift/><span>Our basket</span></button>
-  <button className="scene-hotspot hotspot-cottage" aria-label="Decorate your garden" onClick={()=>open('decorate')}><Leaf/><span>Make it ours</span></button>
-  <button className="scene-hotspot hotspot-lantern" aria-label="Plant a memory under the lantern" onClick={()=>open('memory')}><Sparkles/><span>Leave a little light</span></button>
+  {g.decorations.map(d=><button className="scene-decoration" key={d.id} style={{left:d.position_x+'%',top:d.position_y+'%'}} aria-label={'Enjoy '+(decorLabel[d.decoration_type]||d.decoration_type)} onClick={()=>setInteraction({type:d.decoration_type,placed:true})}><GardenDecoration type={d.decoration_type}/></button>)}
+  <button className="scene-hotspot hotspot-picnic" aria-label="Open today’s picnic question" onClick={()=>setInteraction({type:'blanket',placed:false})}><Gift/><span>Our basket</span></button>
+  <button className="scene-hotspot hotspot-cottage" aria-label="Leave a note at the cottage" onClick={()=>setInteraction({type:'cottage',placed:false})}><Leaf/><span>Our little cottage</span></button>
+  <button className="scene-hotspot hotspot-lantern" aria-label="Leave a light in our sky" onClick={()=>setInteraction({type:'lantern',placed:false})}><Sparkles/><span>Leave a little light</span></button>
   <div className="scene-tree-caption"><span>ROOTED IN THE LITTLE THINGS</span><h2>{['A tiny beginning','Putting down roots','Growing into us','A whole world in bloom','Our story, still growing'][stage-1]}</h2></div>
   <div className="scene-water-card"><div className="scene-growth">{progress}</div><button className={'primary scene-water-button '+(watered?'is-watered':'is-ready')} onClick={water} disabled={busy||watered}>{watered?<Check/>:<Droplets/>}<span>{busy?'Saving your care…':watered?'Your tree felt your love today':'Give our tree a little water'}<small>{watered?'Your daily care is saved. Come enjoy your garden anytime.':'+2 shared growth points · once per partner each UTC day'}</small></span>{watered?<Heart/>:<Sparkles/>}</button></div>
+  <div className="memory-sky" aria-label="Lights from your saved memories">{g.memories.slice(0,3).map((m,i)=><button key={m.id} className={'memory-sky-light '+(freshMemory===m.id?'new-sky-light':'')} style={{left:(45+i*9)+'%',top:(15+(i%2)*6)+'%'}} aria-label={'Open saved memory light: '+m.title} onClick={()=>{audio.sound('chime');openMemory(m.id)}}><span/></button>)}</div>
+  {whisper&&<p className="life-whisper" role="status">{whisper}</p>}
+  {interaction&&<GardenObjectDialog kind={interaction.type} latest={g.interactions?.find(v=>v.interaction_type===interaction.type)} userId={g.user_id} busy={busy} rewarded={rewarded} close={()=>setInteraction(null)} act={objectAction} move={interaction.placed?()=>{setInteraction(null);open('decorate')}:undefined}/>}
   <span className="scene-effect-caption" key={burst} aria-hidden="true">{waterPulse?'A little water, a little love.':''}</span>
   <button className="scene-journal" onClick={()=>open('journal')}><BookOpen/>Our garden story</button>
  </section></MotionConfig>;

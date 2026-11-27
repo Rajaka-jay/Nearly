@@ -1,6 +1,7 @@
 /** Replaceable garden and tree artwork. Growth selection follows the server stage. */
 export const assetConfig={
- background:'/Nearly/grove/garden/glade.webp',
+ background:'/Nearly/grove/garden/glade-v2.webp',
+ visitors:{sleep:'/Nearly/grove/garden/cat-sleep.webp',awake:'/Nearly/grove/garden/cat-awake.webp',butterfly:'/Nearly/grove/garden/butterfly.webp',bird:'/Nearly/grove/garden/bird.webp'},
  trees:[
   {src:'/Nearly/grove/trees/stage-1.webp',description:'A tender sprout with sage leaves and a small pink heart bud.'},
   {src:'/Nearly/grove/trees/stage-2.webp',description:'A graceful sapling with curving branches, leaves and pale pink buds.'},

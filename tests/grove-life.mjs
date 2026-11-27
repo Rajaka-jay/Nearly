@@ -1,0 +1,26 @@
+import {PGlite} from '@electric-sql/pglite';
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const db=new PGlite();
+await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('app.user',true),'')::uuid$$;`);
+await db.exec(await fs.readFile('supabase/setup.sql','utf8'));
+// The original file also provisions Storage/Realtime. This test exercises its database core.
+const base=(await fs.readFile('supabase/couple_grove.sql','utf8')).split('insert into storage.buckets')[0];await db.exec(base);
+await db.exec(await fs.readFile('supabase/couple_grove_memory_privacy.sql','utf8'));
+await db.exec(await fs.readFile('supabase/couple_grove_life.sql','utf8'));
+const A='00000000-0000-0000-0000-000000000001',B='00000000-0000-0000-0000-000000000002',C='00000000-0000-0000-0000-000000000003';
+await db.query('insert into auth.users values($1),($2),($3)',[A,B,C]);await db.query('insert into nearly_spaces(owner_id,partner_id) values($1,$2)',[A,B]);
+const user=async id=>db.query("select set_config('app.user',$1,false)",[id]);
+const visit=async(kind=null)=>(await db.query('select grove_visit($1) result',[kind])).rows[0].result;
+await user('');await assert.rejects(visit(),/Sign in/);
+await user(A);let r=await visit();assert.deepEqual(r.interactions,[]);r=await visit('swing');assert.equal(r.visit_reward,1);assert.equal(r.couple.growth_points,1);r=await visit('swing');assert.equal(r.visit_reward,0);assert.equal(r.interactions.length,1);r=await visit('cat');assert.equal(r.visit_reward,0);assert.equal(r.interactions.length,2);assert.equal(r.couple.growth_points,1);
+await assert.rejects(visit('admin'),/Unknown/);
+await user(B);r=await visit();assert.equal(r.interactions.length,2);r=await visit('bench');assert.equal(r.visit_reward,1);assert.equal(r.couple.growth_points,2);
+await db.exec('set role authenticated');await assert.rejects(db.query('select * from grove_interactions'),/permission denied/);await assert.rejects(db.query('update grove_state set growth_points=999'),/permission denied/);await db.exec('reset role');
+await user(C);await assert.rejects(visit(),/Join/);
+await db.query('update nearly_spaces set partner_id=null where owner_id=$1',[A]);await user(B);await assert.rejects(visit(),/Join/);await user(A);assert.equal((await visit()).interactions.length,0);await assert.rejects(visit('cat'),/Connect/);
+await db.query('update nearly_spaces set partner_id=$1 where owner_id=$2',[C,A]);await user(C);assert.equal((await visit()).interactions.length,0);r=await visit('bird');assert.equal(r.interactions.length,1);assert.equal(r.visit_reward,1);await user(A);r=await visit('swing');assert.equal(r.visit_reward,0);assert.equal(r.interactions.length,2);
+await db.exec("update grove_interactions set interaction_day=interaction_day-1");r=await visit('cat');assert.equal(r.visit_reward,1);
+assert.equal((await db.query("select has_function_privilege('anon','grove_visit(text)','execute') allowed")).rows[0].allowed,false);
+assert.equal((await db.query("select relrowsecurity from pg_class where relname='grove_interactions'")).rows[0].relrowsecurity,true);
+await db.close();console.log('Grove life: daily reward limit, retry deduplication, partner history, anonymous/unrelated denial, direct-write denial, and replacement-partner isolation passed.');

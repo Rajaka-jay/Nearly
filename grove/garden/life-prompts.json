@@ -1,0 +1,27 @@
+{
+  "method": "Built-in image generation",
+  "date": "2026-11-27",
+  "assets": {
+    "glade-v2": {
+      "prompt": "Edit this garden environment. Remove only the small sleeping orange cat beside the cottage steps at the left, filling that tiny area naturally with moss/grass. Keep the exact scene composition, cottage, window, picnic blanket, swing, lantern, path, flowers, colors, hand-painted textures and empty central clearing unchanged. No animals remain in the background. We will overlay an interactive cat separately.",
+      "transparent_background": false,
+      "input": "glade.webp"
+    },
+    "cat-sleep": {
+      "prompt": "Single isolated sleeping ginger-and-white cat sprite for a cozy painterly storybook forest garden game, transparent background. Curled up asleep, fluffy orange tabby body, white chest and paws, tail curled around, peaceful closed eyes. Three-quarter side view facing right, full body comfortably inside frame. Beautiful detailed warm watercolor/gouache texture and soft natural edges, not vector or emoji. Small subtle contact shadow only, no scenery, ground plane, text, logos, borders or extra objects. Consistent cat proportions suitable as a tiny garden visitor.",
+      "transparent_background": true
+    },
+    "cat-awake": {
+      "prompt": "Single isolated awake ginger-and-white cat sprite for a cozy painterly storybook forest garden game, transparent background. Friendly fluffy small orange tabby standing on four paws facing right, white chest and paws, amber eyes, gently curved upward tail. Full body side/three-quarter view comfortably inside frame, calm relaxed expression. Beautiful detailed warm watercolor/gouache texture and soft natural edges, not vector or emoji. Small subtle contact shadow only, no scenery, ground plane, text, logos, borders or extra objects.",
+      "transparent_background": true
+    },
+    "butterfly": {
+      "prompt": "Single isolated delicate peach-and-lavender butterfly sprite, wings spread in an upward three-quarter view, for a romantic painterly storybook forest garden. Transparent background, detailed soft gouache texture, natural graceful butterfly anatomy, blush peach and muted lilac wings, tiny warm brown body and fine antennae. Full butterfly centered with clear transparent margins. No flowers, scenery, background, text, logos or shadow. Not a flat vector icon or emoji.",
+      "transparent_background": true
+    },
+    "bird": {
+      "prompt": "Single isolated little European robin bird perched sideways facing left for a cozy painterly storybook forest garden game, transparent background. Soft warm brown wings, cream belly, muted terracotta orange breast, tiny legs and dark curious eye. Full body including little feet and tail centered with clear transparent margins, detailed watercolor/gouache storybook texture, warm natural light. No branch, scenery, ground, text, logo, borders or emoji.",
+      "transparent_background": true
+    }
+  }
+}
