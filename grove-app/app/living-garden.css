@@ -11,3 +11,14 @@ body{font-size:16px}.top-nav .brand{color:#655174}main{max-width:1680px}.grove-l
 @media(prefers-reduced-motion:reduce){.living-garden *,.living-garden *:before,.living-garden *:after{animation:none!important;transition:none!important}.water-ripples{display:none}}
 
 .scene-paused .particle{display:none}.scene-tree-caption{bottom:200px}@media(max-width:600px){.scene-tree-caption{bottom:200px}}@media(prefers-reduced-motion:reduce){.living-garden .particle{display:none}}
+
+/* Full viewport scene; dialogs remain in the same document/top layer. */
+html.grove-immersive,html.grove-immersive body{overflow:hidden;overscroll-behavior:none}
+.grove-immersive .top-nav,.grove-immersive .mobile-nav,.grove-immersive .grove-header,.grove-immersive .live-status,.grove-immersive .grove-layout>aside,.grove-immersive .action-dock,.grove-immersive .gentle-note,.grove-immersive .dev-preview,.grove-immersive .memory-gallery,.grove-immersive footer{display:none!important}
+.grove-immersive .living-garden{position:fixed;inset:0;width:100%;height:100dvh;min-height:0;max-height:none;border:0;border-radius:0;z-index:40;background-position:center;background-size:cover}
+.grove-immersive .scene-tree-zone{height:min(68dvh,650px);width:min(76vw,710px);bottom:205px}
+.grove-immersive .scene-toolbar{top:max(16px,env(safe-area-inset-top));left:max(16px,env(safe-area-inset-left));right:max(16px,env(safe-area-inset-right))}
+.grove-immersive .scene-water-card{bottom:max(16px,env(safe-area-inset-bottom));width:min(530px,calc(100% - 32px))}
+.grove-immersive .toast{z-index:60;bottom:190px}
+@media(max-width:600px){.scene-time{max-width:calc(100% - 180px)}.scene-couple{top:112px}.grove-immersive .scene-tree-zone{height:calc(100dvh - 295px);min-height:190px;max-height:500px;width:100%;bottom:205px}.grove-immersive .scene-couple{top:112px}.grove-immersive .scene-tree-caption{bottom:190px}.grove-immersive .scene-hotspot{min-width:44px}.grove-immersive .scene-journal{bottom:235px}.grove-immersive .memory-ornament{min-width:36px;min-height:36px}}
+@media(max-height:620px) and (min-width:601px){.grove-immersive .scene-tree-zone{height:calc(100dvh - 165px);width:min(60vw,480px);bottom:125px}.grove-immersive .scene-water-card{padding:10px 14px;width:min(420px,55vw)}.grove-immersive .scene-growth>.muted{display:none}.grove-immersive .scene-water-button{margin-top:6px;padding:9px}.grove-immersive .scene-water-button small{display:none}.grove-immersive .scene-tree-caption{display:none}.grove-immersive .scene-journal{bottom:138px}.grove-immersive .scene-couple{top:85px}}

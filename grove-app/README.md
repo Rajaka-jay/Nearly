@@ -31,3 +31,9 @@ Motion can be paused and honors system reduced motion. Optional quiet wind is sy
 The garden is larger and the task/inventory/sidebar type is more readable. Existing cooperative goals show per-partner completion steps and real reward states. The completed watering button remains warm and legible. Crystal spending, surprise rewards, cooperative timed blooms, blended timezones, live weather, milestone fireworks and new creature unlocks are not implemented or implied by this visual update.
 
 Validation: TypeScript and static production build; pure time-boundary/season checks; desktop and 390px mobile browser UI using a temporary synthetic fixture (excluded from production). Checked ornament callback, season selection, motion pause computed animation state, sound toggle, stage 1/4/5 rendering and saved-water disabled state. Real two-partner Realtime, iOS audio and private photo retrieval were not retested in this update.
+
+## Full-screen garden
+
+The expand button in the garden toolbar fills the viewport and hides the surrounding dashboard while preserving tree, memory, watering, journal and appearance interactions. Exit uses the same button or Escape and restores focus/scroll. `useGardenFullscreen.ts` requests native document fullscreen after a click where available, otherwise uses an immersive CSS viewport. The document remains the fullscreen element so native dialogs stay usable. In the embedded main app, `grove-link.js` accepts layout messages only from the active same-origin Grove frame; a CSS fallback expands that iframe on browsers without native fullscreen. Navigating away clears the host layout state. Browser chrome may remain visible on iOS.
+
+Verified with synthetic scene data: full viewport bounds on desktop, 390px iframe fallback, settings access, exit and Escape focus restoration. Native OS fullscreen on physical iOS/Android was not verified.

@@ -1,9 +1,10 @@
 'use client';
 import {useEffect,useRef,useState,type CSSProperties,type ReactNode} from 'react';
 import {MotionConfig,useReducedMotion} from 'framer-motion';
-import {BookOpen,Check,Droplets,Flower2,Gift,Heart,Leaf,Pause,Play,Settings2,Sparkles,Sun,Volume2,VolumeX} from 'lucide-react';
+import {BookOpen,Check,Droplets,Flower2,Gift,Heart,Leaf,Pause,Play,Settings2,Sparkles,Sun,Volume2,VolumeX,Maximize2,Minimize2} from 'lucide-react';
 import {assetConfig} from '../lib/assets';
 import {gardenMoment,seasonNames,type Season} from '../lib/scene';
+import {useGardenFullscreen} from './useGardenFullscreen';
 import type {Grove} from './CoupleGrovePage';
 
 const phaseLabels:Record<string,string>={sunrise:'A soft new morning',day:'A little sunlight for us',golden:'Our golden hour',dusk:'When the fireflies wake',night:'Under the same stars'};
@@ -48,6 +49,7 @@ function useGardenAudio(){
 
 export default function GroveScene({g,stage,burst,busy,water,open,openMemory,tree,progress}:{g:Grove;stage:number;burst:number;busy:boolean;water:()=>void;open:(s:string)=>void;openMemory:(id:string)=>void;tree:ReactNode;progress:ReactNode}){
  const systemReduced=useReducedMotion(),[paused,setPaused]=useState(false),[now,setNow]=useState<Date|null>(null),[season,setSeason]=useState<Season>('spring'),[settings,setSettings]=useState(false);
+ const fullscreen=useGardenFullscreen();
  const audio=useGardenAudio(),calm=!!systemReduced||paused;
  useEffect(()=>{setNow(new Date());const timer=setInterval(()=>setNow(new Date()),60000);try{setPaused(localStorage.getItem('nearly-grove-motion')==='paused');const saved=localStorage.getItem('nearly-grove-season');if(seasonNames.includes(saved as Season))setSeason(saved as Season)}catch{}return()=>clearInterval(timer)},[]);
  const moment=now?gardenMoment(now):{phase:'day',dark:false},watered=g.events.some(e=>e.user_id===g.user_id&&e.event_type==='water'&&e.created_at.slice(0,10)===(now||new Date()).toISOString().slice(0,10));
@@ -59,7 +61,7 @@ export default function GroveScene({g,stage,burst,busy,water,open,openMemory,tre
   <div className="scene-light" aria-hidden="true"/><div className="scene-aurora" aria-hidden="true"/><div className="scene-sunbeam" aria-hidden="true"/>
   <div className="scene-atmosphere" aria-hidden="true">{Array.from({length:18},(_,i)=><i key={i} className={moment.dark?'firefly':season==='winter'?'snowflake':season==='autumn'?'falling-leaf':'falling-petal'} style={{'--i':i,left:((i*37+7)%100)+'%',top:((i*19+3)%90)+'%',animationDelay:-(i*1.7)+'s'} as CSSProperties}/>)}{Array.from({length:16},(_,i)=><b className="scene-star" key={i} style={{left:((i*29+9)%100)+'%',top:((i*13+5)%40)+'%',animationDelay:-i+'s'}}/>)}</div>
   <div className="scene-grass" aria-hidden="true">{Array.from({length:22},(_,i)=><i key={i} style={{left:(i*4.8)+'%',height:(20+(i%4)*9)+'px',animationDelay:-i*.3+'s'}}/>)}</div>
-  <div className="scene-toolbar"><div className="scene-time"><Sun/><span>{phaseLabels[moment.phase]}<small>{now?now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'Your local time'} · {season} garden</small></span></div><div className="scene-options"><button aria-label={audio.playing?'Mute garden sounds':'Enable gentle wind sounds'} aria-pressed={audio.playing} onClick={()=>void audio.toggle()}>{audio.playing?<Volume2/>:<VolumeX/>}</button><button aria-label={paused?'Resume garden motion':'Pause garden motion'} aria-pressed={paused} onClick={()=>{const value=!paused;setPaused(value);try{localStorage.setItem('nearly-grove-motion',value?'paused':'on')}catch{}}}>{paused?<Play/>:<Pause/>}</button><button aria-label="Scene appearance" aria-expanded={settings} onClick={()=>setSettings(!settings)}><Settings2/></button></div></div>
+  <div className="scene-toolbar"><div className="scene-time"><Sun/><span>{phaseLabels[moment.phase]}<small>{now?now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'Your local time'} · {season} garden</small></span></div><div className="scene-options"><button ref={fullscreen.button} aria-label={fullscreen.expanded?'Exit full-screen garden':'View garden full screen'} title={fullscreen.expanded?'Exit full screen (Esc)':'Full-screen garden'} aria-pressed={fullscreen.expanded} onClick={()=>void fullscreen.toggle()}>{fullscreen.expanded?<Minimize2/>:<Maximize2/>}</button><button aria-label={audio.playing?'Mute garden sounds':'Enable gentle wind sounds'} aria-pressed={audio.playing} onClick={()=>void audio.toggle()}>{audio.playing?<Volume2/>:<VolumeX/>}</button><button aria-label={paused?'Resume garden motion':'Pause garden motion'} aria-pressed={paused} onClick={()=>{const value=!paused;setPaused(value);try{localStorage.setItem('nearly-grove-motion',value?'paused':'on')}catch{}}}>{paused?<Play/>:<Pause/>}</button><button aria-label="Scene appearance" aria-expanded={settings} onClick={()=>setSettings(!settings)}><Settings2/></button></div></div>
   {settings&&<div className="scene-settings"><label>Garden season<select value={season} onChange={e=>{const value=e.target.value as Season;setSeason(value);try{localStorage.setItem('nearly-grove-season',value)}catch{}}}>{seasonNames.map(s=><option key={s}>{s}</option>)}</select></label><p>The light follows your device’s clock. Seasons are a garden mood, not live weather. Sound starts only when you turn it on.{systemReduced?' Your device’s reduced-motion setting is respected.':''}</p></div>}
   {audio.error&&<p className="scene-audio-error" role="alert">{audio.error}</p>}
   <div className="scene-couple"><Heart/><span>{g.names.join(' & ')}<small>{points.toLocaleString()} little points of care · presence stays private</small></span></div>
