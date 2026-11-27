@@ -21,7 +21,7 @@ The application has two frontend implementations sharing Supabase authentication
 | `index.html` | Static app entry point; ordered script/style loading |
 | `app.js` | Original shell, hash navigation, state, forms and activity catalogue |
 | `ui.js`, `style.css`, `design.css` | Nearly shell and visual presentation |
-| `activity-art.js`, `activity-art.css` | Custom SVG scenes for all Play activity cards |
+| `activity-art.js`, `activity-art.css` | Generated photo-style WebP covers and shared activity asset registry |
 | `config.js` | Public Supabase project settings only |
 | `sync-core.js`, `backend.js`, `auth.js` | Shared-state synchronization, session and pairing integration |
 | `together.js`, `chess-room.js`, `server-games.js` | Earlier activity rooms and game integrations |
@@ -44,7 +44,7 @@ Grove is a static Next.js export at `/Nearly/grove/`. GitHub Pages cannot execut
 ## Design and accessibility
 
 - Preserve the warm, calm, romantic storybook theme: cream, lavender, soft pink, peach and sage, rounded cards and gentle shadows.
-- Use relevant artwork and custom SVG illustrations for activities. Do not replace the illustrated Play covers with emoji, empty image slots, or repeated generic icon tiles.
+- Use relevant generated photographic images for activity covers; preserve the shared asset registry and optimize image sizes. Do not replace the illustrated Play covers with emoji, empty image slots, or repeated generic icon tiles.
 - Use consistent SVG interface icons for controls. Keep labels readable and the purpose of each action clear.
 - Design for narrow mobile screens first; check desktop too. Prevent horizontal overflow and keep important controls reachable.
 - Preserve visible keyboard focus, semantic buttons, labelled forms, useful error messages, and keyboard access to dialogs and games.

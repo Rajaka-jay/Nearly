@@ -1,0 +1,29 @@
+{
+  "method": "Built-in image generation",
+  "date": "2026-11-27",
+  "style": "Photorealistic editorial still life, landscape 5:3 website cover; warm natural light, cream blush sage lavender accents, authentic material textures, centered subjects with cropping room. No people, brands, UI, emoji, vector art, borders or watermarks; no readable text except specified simple marks.",
+  "subjects": {
+    "guess": "two cream blank question cards on a cozy wooden table beside a lavender pen and two ceramic tea cups, one card face down, a small handwritten question mark on the other",
+    "roulette": "two blank paper admission tickets and a small wooden spinner on a cafe table, a vase of flowers and two tea cups",
+    "match": "real tactile memory matching cards arranged on a wooden table, two matching pressed flower photographs face up and other cards face down",
+    "ttt": "a real wooden tic tac toe board with carved X pieces and round O pieces in blush and sage, on cream linen",
+    "rather": "two small photographic prints side by side, one of misty mountains and one of a calm sunny beach, on a cozy desk",
+    "truths": "three real cream note cards, two marked with simple green checkmarks and one marked with a burgundy cross, with a pencil on linen",
+    "letter": "a real blush pink envelope with a wax seal, cream handwritten letter with illegible small handwriting, dried flowers on wooden desk",
+    "draw": "watercolor sketchbook with an unfinished mountain landscape, real paints and paintbrushes on warm wooden art table",
+    "focus": "cozy study desk with two notebooks, a closed laptop, sage desk lamp and ceramic tea mug, soft afternoon light",
+    "watch": "cozy living room with two soft cushions facing a television displaying a softly blurred scenic mountain film, popcorn on table, no logos",
+    "cook": "real ceramic mixing bowl with wooden spoon, fresh tomatoes, herbs and flour on warm kitchen counter, cheerful cooking preparation",
+    "book": "two real open novels with bookmarks beside tea and reading glasses on cream knitted blanket, no legible text",
+    "questions": "two ceramic tea cups facing each other across a small intimate cafe table with a blank question notebook and a lavender pen",
+    "playlist": "real sage green headphones beside a vinyl record player and blush record sleeve in cozy room, no brands",
+    "chess": "real beautiful wooden chess board with ivory and dark walnut chess pieces in a plausible midgame, warm window light",
+    "four": "real wooden vertical four-in-a-row board with seven columns of holes, a few blush and sage round discs inserted, spare discs on wooden table",
+    "reversi": "real Reversi Othello board with an eight by eight sage green grid and a few black and ivory discs on wooden cafe table",
+    "pebbles": "three small separate groups of smooth river pebbles arranged as a simple stone counting game, warm tabletop with linen",
+    "basketball": "real orange basketball in foreground on a quiet outdoor basketball court, hoop softly focused behind, warm late afternoon sunlight",
+    "golf": "real miniature golf green with a white ball near a hole and small flag, putter resting nearby, soft garden foliage, late afternoon",
+    "jigsaw": "real partially assembled landscape jigsaw puzzle on cozy wooden table, loose interlocking puzzle pieces and two tea mugs",
+    "battleship": "real tabletop naval strategy board game, blue coordinate grids and small gray plastic ships with red and white pegs, on wooden table"
+  }
+}

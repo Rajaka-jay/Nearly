@@ -21,7 +21,7 @@ Provider pages were checked on **26 November 2026**. Descriptions and instructio
 
 - Data and invitation instructions: `external-games.js`.
 - Directory and dialog styling: `external-games.css`.
-- Original, decorative SVG covers: `activity-art.js`. The new sports/puzzle/board illustrations contain no provider logos or copied game assets.
+- Generated photo-style covers: `activity-art.js` and `assets/activities/`. These decorative still lifes contain no provider logos or copied game assets; they are not game screenshots.
 - Load the directory after the existing activity/media wrappers in `index.html`.
 - Keep HTTPS destinations on a small reviewed list. Use `target="_blank"` with `rel="noopener noreferrer"` so Nearly stays open without exposing an opener.
 - Do not turn arbitrary user URLs into a trusted launch directory or iframe. Do not scrape provider artwork or promise unsupported private rooms.
